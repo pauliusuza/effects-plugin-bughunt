@@ -3,7 +3,6 @@
 
 #include <choc_javascript_QuickJS.h>
 
-
 //==============================================================================
 // A quick helper for locating bundled asset files
 juce::File getAssetsDirectory()
@@ -169,23 +168,33 @@ bool EffectsPluginProcessor::isBusesLayoutSupported (const AudioProcessor::Buses
     return true;
 }
 
-void EffectsPluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& /* midiMessages */)
+void EffectsPluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
-    if (runtime == nullptr)
-        return;
 
-    // Copy the input so that our input and output buffers are distinct
     scratchBuffer.makeCopyOf(buffer, true);
+    buffer.clear();
 
-    // Process the elementary runtime
-    runtime->process(
-        const_cast<const float**>(scratchBuffer.getArrayOfWritePointers()),
-        getTotalNumInputChannels(),
-        const_cast<float**>(buffer.getArrayOfWritePointers()),
-        buffer.getNumChannels(),
-        buffer.getNumSamples(),
-        nullptr
-    );
+    if (runtime != nullptr) {
+        auto now = MIDIClock::now();
+        // Store midi messages
+        if(!midiMessages.isEmpty()) {
+            for (const auto metadata : midiMessages) {
+                auto bytes = metadata.getMessage().getRawData();
+                auto m = choc::midi::ShortMessage (bytes[0], bytes[1], bytes[2]);
+                midiFifoQueue.push({ now, m });
+            }
+            triggerAsyncUpdate();
+        }
+        // Process the elementary runtime
+        runtime->process(
+            const_cast<const float**>(scratchBuffer.getArrayOfWritePointers()),
+            getTotalNumInputChannels(),
+            const_cast<float**>(buffer.getArrayOfWritePointers()),
+            buffer.getNumChannels(),
+            buffer.getNumSamples(),
+            nullptr
+        );
+    }
 }
 
 void EffectsPluginProcessor::parameterValueChanged (int parameterIndex, float newValue)
@@ -294,15 +303,26 @@ void EffectsPluginProcessor::dispatchStateChange()
   if (typeof globalThis.__receiveStateChange__ !== 'function')
     return false;
 
-  globalThis.__receiveStateChange__(%);
+  globalThis.__receiveStateChange__(%1, %2);
   return true;
 })();
 )script";
 
+    const uint32_t midiCount = midiFifoQueue.getUsedSlots();
+    elem::js::Array vec;
+    if(midiCount > 0) {
+        IncomingMIDIEvent m;
+        while(midiFifoQueue.pop(m)) {
+            vec.push_back(elem::js::Value(m.message.toHexString()));
+        };
+    }
+
     // Need the double serialize here to correctly form the string script. The first
     // serialize produces the payload we want, the second serialize ensures we can replace
     // the % character in the above block and produce a valid javascript expression.
-    auto expr = juce::String(kDispatchScript).replace("%", elem::js::serialize(elem::js::serialize(state))).toStdString();
+    auto expr = juce::String(kDispatchScript)
+    .replace("%1", elem::js::serialize(elem::js::serialize(state)))
+    .replace("%2", elem::js::serialize(elem::js::serialize(vec))).toStdString();
 
     // First we try to dispatch to the UI if it's available, because running this step will
     // just involve placing a message in a queue.

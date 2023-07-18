@@ -21,7 +21,7 @@ juce_add_plugin(${TARGET_NAME}
   COPY_PLUGIN_AFTER_BUILD FALSE       # We enable this manually below after adding a copy step
   APP_SANDBOX_ENABLED TRUE
   APP_SANDBOX_OPTIONS com.apple.security.network.client com.apple.security.files.user-selected.read-write
-  FORMATS AU VST3                     # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
+  FORMATS AU VST3 Standalone          # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
   PRODUCT_NAME ${TARGET_NAME})        # The name of the final executable, which can differ from the target name
 
 # Copy static assets post build

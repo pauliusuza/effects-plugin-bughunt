@@ -25,7 +25,8 @@ function requestParamValueUpdate(paramId, value) {
   }
 }
 
-globalThis.__receiveStateChange__ = function(state) {
+globalThis.__receiveStateChange__ = function(state, _midi) {
+  console.log(JSON.parse(_midi))
   store.setState(JSON.parse(state));
 };
 

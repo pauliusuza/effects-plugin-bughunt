@@ -9,7 +9,7 @@
     "prebuild": "npm run clean",
     "postbuild": "npm run copy",
     "dev": "vite",
-    "build-dsp": "esbuild dsp/main.js --bundle --outdir=dist",
+    "build-dsp": "esbuild dsp/main.ts --bundle --outdir=dist",
     "build-ui": "vite build",
     "build": "npm run build-ui && npm run build-dsp",
     "preview": "vite preview"

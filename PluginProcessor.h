@@ -4,8 +4,9 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include <choc_javascript.h>
+#include "choc/audio/choc_MIDI.h"
+#include "choc/containers/choc_MultipleReaderMultipleWriterFIFO.h"
 #include <Runtime.h>
-
 
 //==============================================================================
 class EffectsPluginProcessor
@@ -73,6 +74,16 @@ private:
     choc::javascript::Context jsContext;
 
     juce::AudioBuffer<float> scratchBuffer;
+
+    using MIDIClock = std::chrono::high_resolution_clock;
+
+    struct IncomingMIDIEvent
+    {
+        MIDIClock::time_point time;
+        choc::midi::ShortMessage message;
+    };
+
+    choc::fifo::SingleReaderSingleWriterFIFO<IncomingMIDIEvent> midiFifoQueue;
 
     std::unique_ptr<elem::Runtime<float>> runtime;
 
