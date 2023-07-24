@@ -14,23 +14,30 @@ let core = new Renderer(__getSampleRate__(), (batch) => {
   __postNativeMessage__(JSON.stringify(batch));
 });
 
-const polyphony = (props:any, allVoices: Voice[], activeVoices: Voice[]) => {
-  let e = Math.round(Math.random());
-  const synthVoices:any[] = allVoices.map((v) => {
-    let fq = el.smooth({key: "freq"+v.idx}, el.tau2pole(0.004), el.const({key: `v${v.idx}`, value: v.freq}));
-    let vc = (e > 0.5) ? el.saw({key: v.id}, fq) : el.square({key: v.id}, fq);
-    return el.mul(
-      el.const({ key: `gate${v.gate}`, value: v.gate}),
-      vc
-    );
-  });
-  return el.mul({key: 'voices'}, 
-    0.5,
-    synthVoices.reduce((voiceStack, v, i) => {
-      return el.add(voiceStack, v);
-    }, 0)
-  );
+const engine_2OSC = (name: string, props:any, vfreq: number) => {
+  const n = `${name}`;
+  let freq = el.sm(el.const({ key: `${name}:freqency`, value: vfreq }));
+  return el.add(
+    { key: `${n}` },
+    el.square({ key: `${name}:triangle` }, freq),
+    el.triangle({ key: `${name}:triangle` }, freq)
+  )
 }
+
+const engine_1OSC = (name: string, props:any, vfreq: number) => {
+  const n = `${name}`;
+  let freq = el.sm(el.const({ key: `${name}:freqency`, value: vfreq }));
+  return el.add(
+    { key: `${n}` },
+    el.saw({ key: `${name}:saw` }, freq)
+  )
+}
+
+const engines = [
+  {name:'1osc', impl: engine_1OSC},
+  {name:'2osc', impl: engine_2OSC},
+  {name:'null', impl: () => 0 }
+];
 
 // Global voice manager
 const vcm = VoiceManager({});
@@ -38,26 +45,22 @@ const vcm = VoiceManager({});
 // Our state change callback
 globalThis.__receiveStateChange__ = (state, _midi) => {
 
-  const midi = JSON.parse(_midi);
   const props = JSON.parse(state);
   
-  const num_voices = 8;
-  // SET VOICE COUNT
-  vcm.setVoiceCount(num_voices);
-  // PARSE MIDI NOTES INTO VOICES AND TRIGGER EVENTS
-  vcm.streamMIDI(parseStream(midi));
+  let rand = Math.random();
+  let randomEngine = engines[ Math.floor(rand * engines.length ) ];
 
-  // ALL VOICES
-  let allVoices = vcm.getVoices();
-  // ACTIVE VOICES
-  let activeVoices = allVoices.filter((v)=>{
-    return v.gate > 0;
-  });
+  let synth1 = randomEngine.impl(`voice1`, props, 220 + Math.random() * 220 );
+  let synth2 = randomEngine.impl(`voice2`, props, 220 + Math.random() * 220 );
 
-  // SYNTH
-  let signal = polyphony(props, allVoices, activeVoices);
-  // MAKE STEREO
-  let [left, right] = [ signal, signal ];
+  let synth = el.add(
+    synth1, 
+    synth2
+  )
+
+  let [left, right] = [
+    synth, synth
+  ];
 
   // RENDER
   let stats = core.render(

@@ -82,9 +82,15 @@ export const VoiceManager = ({
         return sorted[0];
     }
     const handleNoteOn = (n: LiveMidiNote) => {
+        const voiceId = __notesToVoices.get(n.note);
+        if(voiceId) {
+            const active_voice = __voices.get(voiceId);
+            if(active_voice && active_voice.gate > 0) return;
+        }
         let oldestVoiceId = getOldestVoice().id;
         const oldestVoice = __voices.get(oldestVoiceId);
         if(oldestVoiceId) {
+            console.log('noteOn', oldestVoiceId, n.note)
             __voices.set(oldestVoiceId, Object.assign({}, oldestVoice, {
                 gate: 1,
                 freq: n.herz,
@@ -99,11 +105,11 @@ export const VoiceManager = ({
     }
     const handleNoteOff = (n: LiveMidiNote) => {
         const voiceId = __notesToVoices.get(n.note);
+        console.log('ntf', voiceId)
         if(voiceId) {
             const active_voice = __voices.get(voiceId);
-            console.log(active_voice, active_voice?.note, n.note)
             if(active_voice?.note == n.note) {
-                console.log('setting noteoff', voiceId)
+                console.log('noteOff', voiceId, n.note)
                 __voices.set(voiceId, Object.assign({}, active_voice, {
                     gate: 0
                 }));
@@ -114,6 +120,7 @@ export const VoiceManager = ({
     const handleNoteAft = (n: LiveMidiNote) => {
         const voiceId = __notesToVoices.get(n.note);
         if(voiceId) {
+            console.log('noteAft', voiceId, n.note, n.aft)
             const active_voice = __voices.get(voiceId);
             __voices.set(voiceId, Object.assign({}, active_voice, { 
                 aft: n.aft,
