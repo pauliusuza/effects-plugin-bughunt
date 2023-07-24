@@ -1,6 +1,4 @@
 import {Renderer, el} from '@elemaudio/core';
-import {Voice, VoiceManager} from './voices';
-import {parseStream} from './midi';
 
 // This example demonstrates writing a very simple chorus effect in Elementary, with a
 // custom Renderer instance that marshals our instruction batches through the __postNativeMessage__
@@ -36,11 +34,8 @@ const engine_1OSC = (name: string, props:any, vfreq: number) => {
 const engines = [
   {name:'1osc', impl: engine_1OSC},
   {name:'2osc', impl: engine_2OSC},
-  {name:'null', impl: () => 0 }
+  {name:'null', impl: () => el.const({key: 'zero', value: 0}) }
 ];
-
-// Global voice manager
-const vcm = VoiceManager({});
 
 // Our state change callback
 globalThis.__receiveStateChange__ = (state, _midi) => {
@@ -51,12 +46,10 @@ globalThis.__receiveStateChange__ = (state, _midi) => {
   let randomEngine = engines[ Math.floor(rand * engines.length ) ];
 
   let synth1 = randomEngine.impl(`voice1`, props, 220 + Math.random() * 220 );
-  let synth2 = randomEngine.impl(`voice2`, props, 220 + Math.random() * 220 );
 
   let synth = el.add(
-    synth1, 
-    synth2
-  )
+    synth1
+  );
 
   let [left, right] = [
     synth, synth
