@@ -31,25 +31,41 @@ const engine_1OSC = (name: string, props:any, vfreq: number) => {
   )
 }
 
+const engine_zOSC = (name: string, props:any, vfreq: number) => {
+  const n = `${name}`;
+  let freq = el.sm(el.const({ key: `${name}:freqency`, value: vfreq }));
+  return el.add(
+    { key: `${n}` },
+    el.blepsquare({ key: `${name}:blsq` }, freq)
+  )
+}
+
 const engines = [
   {name:'1osc', impl: engine_1OSC},
   {name:'2osc', impl: engine_2OSC},
-  {name:'null', impl: () => el.const({key: 'zero', value: 0}) }
+  {name:'blsq', impl: engine_zOSC},
 ];
 
 // Our state change callback
 globalThis.__receiveStateChange__ = (state, _midi) => {
 
   const props = JSON.parse(state);
-  
-  let rand = Math.random();
-  let randomEngine = engines[ Math.floor(rand * engines.length ) ];
 
-  let synth1 = randomEngine.impl(`voice1`, props, 220 + Math.random() * 220 );
+  let max_voices = 4;
+  let voice_count = 1 + Math.floor(max_voices * Math.random());
 
-  let synth = el.add(
-    synth1
-  );
+  let voice_array:any[] = [];
+  for (let i = 0; i < voice_count; i++) {
+    let randomEngine = engines[ Math.floor(Math.random() * engines.length ) ];
+    voice_array.push(randomEngine.impl(`voice:${i}`, props, 40 + Math.random() * 400 ));
+  }
+
+  let synth = el.mul(
+    el.add(
+      ...voice_array
+    ),
+    0.5
+  )
 
   let [left, right] = [
     synth, synth
